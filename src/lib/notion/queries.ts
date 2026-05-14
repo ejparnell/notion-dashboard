@@ -30,6 +30,9 @@ async function queryAll<T>(
     const response = await dbQuery({
       database_id: databaseId,
       ...params,
+      // Exclude archived and trashed pages at the Notion API level
+      archived: false,
+      in_trash: false,
       start_cursor: cursor
     })
 
@@ -38,7 +41,10 @@ async function queryAll<T>(
     cursor = response.has_more && response.next_cursor ? response.next_cursor : undefined
   } while (cursor)
 
-  return all
+  // Belt-and-suspenders: also filter client-side in case the API returns anything slipping through
+  return (all as Array<T & { archived?: boolean; in_trash?: boolean }>).filter(
+    (p) => !p.archived && !p.in_trash
+  ) as T[]
 }
 
 // ─── Time Entries ────────────────────────────────────────────────────────────
